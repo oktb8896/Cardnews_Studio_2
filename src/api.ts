@@ -1,0 +1,3 @@
+import type{Brief,Card,Critique,Project}from'./types';
+async function call<T>(url:string,init?:RequestInit):Promise<T>{const r=await fetch(url,{...init,headers:{'Content-Type':'application/json',...(init?.headers||{})}});if(!r.ok){const x=await r.json().catch(()=>({}));throw new Error(x.error||'요청에 실패했습니다.')}return r.json()}
+export const api={ideas:()=>call<string[]>('/api/ideas'),create:(b:Brief)=>call<Project>('/api/projects',{method:'POST',body:JSON.stringify(b)}),redesign:(brief:Brief,card:Card,instruction?:string)=>call<Card>('/api/cards/redesign',{method:'POST',body:JSON.stringify({brief,card,instruction})}),critique:(project:Project)=>call<Critique>(`/api/projects/${project.id}/critique`,{method:'POST',body:JSON.stringify({project})})};
