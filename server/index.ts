@@ -1,0 +1,12 @@
+import express from 'express'; import cors from 'cors'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+import { GenerateProject } from './application/generate-project.js'; import { briefSchema } from './presentation/schema.js';
+import { DemoCreativeDirector,DemoImageArtist,DemoVisualCritic } from './infrastructure/demo-ai.js'; import { OpenAICreativeDirector,OpenAIImageArtist,OpenAIVisualCritic } from './infrastructure/openai-ai.js';
+const key=process.env.OPENAI_API_KEY; const director=key?new OpenAICreativeDirector(key):new DemoCreativeDirector(); const artist=key?new OpenAIImageArtist(key):new DemoImageArtist(); const critic=key?new OpenAIVisualCritic(key):new DemoVisualCritic(); const generator=new GenerateProject(director,artist);
+const app=express(); app.use(cors()); app.use(express.json({limit:'25mb'})); app.get('/api/health',(_,res)=>res.json({ok:true,mode:key?'openai':'demo'}));
+app.get('/api/ideas',(_,res)=>res.json(['성적이 오르는 오답노트는 무엇이 다른가','킬러 문항보다 먼저 잡아야 할 3점 습관','수학을 읽는 힘: 조건을 번역하는 법','우리 학원은 왜 풀이보다 질문을 남길까','한 달 동안 달라진 학생의 생각 기록']));
+app.post('/api/projects',async(req,res,next)=>{try{const b=briefSchema.parse(req.body);res.json(await generator.execute(b));}catch(e){next(e);}});
+app.post('/api/projects/:id/critique',async(req,res,next)=>{try{res.json(await critic.critique(req.body.project,req.body.previews));}catch(e){next(e);}});
+app.post('/api/cards/redesign',async(req,res,next)=>{try{res.json(await director.redesign(req.body.brief,req.body.card,req.body.instruction));}catch(e){next(e);}});
+app.use((e:any,_req:any,res:any,_next:any)=>res.status(e?.name==='ZodError'?400:500).json({error:e?.message||'Unexpected error'}));
+const here=path.dirname(fileURLToPath(import.meta.url));const staticDir=path.resolve(here,'../dist');app.use(express.static(staticDir));app.get('/{*splat}',(_req,res)=>res.sendFile(path.join(staticDir,'index.html')));
+app.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('Cardnews Studio 2 ready'));
